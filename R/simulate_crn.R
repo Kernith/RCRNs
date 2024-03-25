@@ -14,8 +14,19 @@
 
 #------------------Functions----------------------------------------------------
 
-# parses a string representing reaction equation
+#' Parse a chemical reaction network
+#'
+#' @param rxn_path The name of the file containing the reaction equation set
+#' @param partial_orders The name of the file containing the partial orders
+#'
+#' @return A list of data frames with reaction parameters
+#' @export
+#'
+#' @examples
+#' parse_reactions("rxns.txt")
 parse_reactions <- function(rxn_path, partial_orders = NA) {
+  
+  # parses a string representing reaction equation
   
   # Read data and filter out comments
   rxns <- read.table(rxn_path, header = FALSE, sep = "\t", col.names = "rxn")
@@ -109,7 +120,7 @@ parse_reactions <- function(rxn_path, partial_orders = NA) {
     if (is.na(partial_orders)) {
       cbind(reacts[1], lapply(reacts[2:length(reacts)], function (x) x * -1))
     } else {
-      read_csv(partial_orders)
+      read.csv(partial_orders)
     }
   
   # return a named list of the reaction parameters (const, react, prod, partial)
@@ -120,9 +131,20 @@ parse_reactions <- function(rxn_path, partial_orders = NA) {
   
 }
 
-# makes a file for initial concentrations from the set of reaction equations
-# if a file already exists, warns that a file already exists
+#' Make Species Concentrations from Chemical Network
+#'
+#' @param init_path The name of the file containing the concentrations of species
+#' @param rxn_path The name of the file containing the reaction equation set
+#'
+#' @return a file containing a template for species concentrations or a warning
+#' @export
+#'
+#' @examples
+#' make_concs_file("rxn.path")
 make_concs_file <- function(init_path, rxn_path) {
+  
+  # makes a file for initial concentrations from the set of reaction equations
+  # if a file already exists, warns that a file already exists
   
   # read in rxn equations
   rxn_eqns <- parse_reactions(rxn_path)
@@ -150,6 +172,26 @@ make_concs_file <- function(init_path, rxn_path) {
   }
 }
 
+#' Title
+#'
+#' @param rxn_path The name of the file containing the reaction equation set
+#' @param init_path The name of the file containing the concentrations of species
+#' @param partial_orders The name of the file containing the partial orders
+#' @param time_step the amount of time that elapses in each simulation cycle
+#' @param max_time the full amount of time the simulation will run
+#' @param output_res the number of time points that will be returned from the simulation
+#'
+#' @return a data frame with the concentrations and reaction rates at each output time point
+#' @export
+#'
+#' @examples
+#' results <- simulate_reaction(
+#'   rxn_path = "rxns.txt",
+#'   init_path = "concs.csv",
+#'   time_step = 10^-2,
+#'   max_time = 360,
+#'   output_res = 1000
+#'   )
 simulate_reaction <- function(rxn_path, init_path, partial_orders = NA,
                               time_step = 10^-3, max_time = 60,
                               output_res = 1000) {
@@ -160,8 +202,6 @@ simulate_reaction <- function(rxn_path, init_path, partial_orders = NA,
   cat("\noutput a data point every ", max_time / time_step / output_res,
       " steps. It must be >= 1. It should be >=100 for smooth graph\n",
       sep = "")
-  
-  #------------------Setup Simulation-------------------------------------------
   
   # read in reaction equations and initial concentrations
   rxn_eqns   <- parse_reactions(rxn_path)
