@@ -4,10 +4,10 @@
 \alias{parse_reactions}
 \title{Parse a chemical reaction network}
 \usage{
-parse_reactions(rxn_path, partial_orders = NA)
+parse_reactions(reactions, partial_orders = NULL)
 }
 \arguments{
-\item{rxn_path}{The name of the file containing the reaction equation set}
+\item{reactions}{A character vector containing strings with the reaction equations}
 
 \item{partial_orders}{The name of the file containing the partial orders}
 }
@@ -18,5 +18,6 @@ A list of data frames with reaction parameters
 Parse a chemical reaction network
 }
 \examples{
-parse_reactions("rxns.txt")
+data(rxns)
+parse_reactions(rxns)
 }

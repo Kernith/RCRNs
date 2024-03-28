@@ -4,12 +4,12 @@
 \alias{make_concs_file}
 \title{Make Species Concentrations from Chemical Network}
 \usage{
-make_concs_file(init_path, rxn_path)
+make_concs_file(init_path, reactions)
 }
 \arguments{
 \item{init_path}{The name of the file containing the concentrations of species}
 
-\item{rxn_path}{The name of the file containing the reaction equation set}
+\item{reactions}{A character vector containing strings with the reaction equations}
 }
 \value{
 a file containing a template for species concentrations or a warning
@@ -18,5 +18,6 @@ a file containing a template for species concentrations or a warning
 Make Species Concentrations from Chemical Network
 }
 \examples{
-make_concs_file("rxn.path")
+data(rxns)
+make_concs_file(init_path = tempfile(), rxns)
 }

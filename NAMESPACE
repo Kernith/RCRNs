@@ -3,3 +3,8 @@
 export(make_concs_file)
 export(parse_reactions)
 export(simulate_reaction)
+importFrom(stats,reshape)
+importFrom(utils,read.csv)
+importFrom(utils,read.table)
+importFrom(utils,stack)
+importFrom(utils,write.csv)

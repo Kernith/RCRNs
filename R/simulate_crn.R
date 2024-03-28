@@ -16,35 +16,41 @@
 
 #' Parse a chemical reaction network
 #'
-#' @param rxn_path The name of the file containing the reaction equation set
+#' @param reactions A character vector containing strings with the reaction equations
 #' @param partial_orders The name of the file containing the partial orders
 #'
 #' @return A list of data frames with reaction parameters
 #' @export
 #'
 #' @examples
-#' parse_reactions("rxns.txt")
-parse_reactions <- function(rxn_path, partial_orders = NA) {
+#' data(rxns)
+#' parse_reactions(rxns)
+parse_reactions <- function(reactions, partial_orders = NULL) {
   
-  # parses a string representing reaction equation
+  # Check for valid supplied arguments arguments
+  arg_rxns_valid <- is.character(reactions)
+  stopifnot("`name` must be a character." = arg_rxns_valid)
+  arg_orders_valid <- is.data.frame(partial_orders) | is.null(partial_orders)
+  stopifnot("`partial_orders` must be NULL or a data frame" = arg_orders_valid)
   
-  # Read data and filter out comments
-  rxns <- read.table(rxn_path, header = FALSE, sep = "\t", col.names = "rxn")
-  rxns <- as.data.frame(rxns[!startsWith(rxns$rxn, "#"), ], nm = c("rxn"))
-  # Separate reaction names, reactants, products, and constant
-  rxns$rxn <- rxns$rxn |>
-    gsub("k = ", "", x = _) |>
-    gsub("=", ",", x = _) |>
-    gsub("->", ",", x = _)
-  rxns <- as.data.frame(do.call(rbind, strsplit(rxns$rxn, ","))) |>
-    lapply(trimws) |>
-    data.frame()
+  # Filter comments; separate reaction names, reactants, products, and constants
+  rxns <- reactions[!startsWith(reactions, "#")]
+  rxns <- as.data.frame(reactions)
+  names(rxns) <- "rxn"
+  
+  rxns$rxn <- gsub("k = ", "", rxns$rxn)
+  rxns$rxn <- gsub("=", ",", rxns$rxn)
+  rxns$rxn <- gsub("->", ",", rxns$rxn)
+  
+  rxns <- as.data.frame(do.call(rbind, strsplit(rxns$rxn, ",")))
+  rxns <- lapply(rxns, trimws)
+  rxns <- data.frame(rxns)
   colnames(rxns) <- c("rxn", "react", "prod", "const")
   
   # parse k statements to get numeric rate constants
-  rxns$const <- trimws(rxns$const) |>
-    gsub("10\\^", "1e", x = _) |>
-    as.numeric()
+  rxns$const <- trimws(rxns$const)
+  rxns$const <- gsub("10\\^", "1e", rxns$const)
+  rxns$const <- as.numeric(rxns$const)
   consts <- rxns[, c(1, 4)]
   
   # Get reactant stoichiometries
@@ -117,7 +123,7 @@ parse_reactions <- function(rxn_path, partial_orders = NA) {
   
   # get partial orders from react_stoichs (by default) or input file
   orders <-
-    if (is.na(partial_orders)) {
+    if (is.null(partial_orders)) {
       cbind(reacts[1], lapply(reacts[2:length(reacts)], function (x) x * -1))
     } else {
       read.csv(partial_orders)
@@ -134,20 +140,21 @@ parse_reactions <- function(rxn_path, partial_orders = NA) {
 #' Make Species Concentrations from Chemical Network
 #'
 #' @param init_path The name of the file containing the concentrations of species
-#' @param rxn_path The name of the file containing the reaction equation set
+#' @param reactions A character vector containing strings with the reaction equations
 #'
 #' @return a file containing a template for species concentrations or a warning
 #' @export
 #'
 #' @examples
-#' make_concs_file("rxn.path")
-make_concs_file <- function(init_path, rxn_path) {
+#' data(rxns)
+#' make_concs_file(init_path = tempfile(), rxns)
+make_concs_file <- function(init_path, reactions) {
   
   # makes a file for initial concentrations from the set of reaction equations
   # if a file already exists, warns that a file already exists
   
   # read in rxn equations
-  rxn_eqns <- parse_reactions(rxn_path)
+  rxn_eqns <- parse_reactions(reactions)
   
   # if no initial concentrations file, makes an empty one from rxn eqns ...
   if (!file.exists(init_path)) {
@@ -174,8 +181,8 @@ make_concs_file <- function(init_path, rxn_path) {
 
 #' Title
 #'
-#' @param rxn_path The name of the file containing the reaction equation set
-#' @param init_path The name of the file containing the concentrations of species
+#' @param reactions A character vector containing strings with the reaction equations
+#' @param init_concs The name of the file containing the concentrations of species
 #' @param partial_orders The name of the file containing the partial orders
 #' @param time_step the amount of time that elapses in each simulation cycle
 #' @param max_time the full amount of time the simulation will run
@@ -185,14 +192,16 @@ make_concs_file <- function(init_path, rxn_path) {
 #' @export
 #'
 #' @examples
+#' data(rxns)
+#' data(concs)
 #' results <- simulate_reaction(
-#'   rxn_path = "rxns.txt",
-#'   init_path = "concs.csv",
+#'   reactions = rxns,
+#'   init_concs = concs,
 #'   time_step = 10^-2,
 #'   max_time = 360,
 #'   output_res = 1000
 #'   )
-simulate_reaction <- function(rxn_path, init_path, partial_orders = NA,
+simulate_reaction <- function(reactions, init_concs, partial_orders = NULL,
                               time_step = 10^-3, max_time = 60,
                               output_res = 1000) {
   
@@ -204,8 +213,7 @@ simulate_reaction <- function(rxn_path, init_path, partial_orders = NA,
       sep = "")
   
   # read in reaction equations and initial concentrations
-  rxn_eqns   <- parse_reactions(rxn_path)
-  init_concs <- read.csv(init_path)
+  rxn_eqns   <- parse_reactions(reactions)
   init_concs$init_conc <- as.double(init_concs$init_conc)
   init_concs <- init_concs[order(init_concs$species),]
   

@@ -5,18 +5,18 @@
 \title{Title}
 \usage{
 simulate_reaction(
-  rxn_path,
-  init_path,
-  partial_orders = NA,
+  reactions,
+  init_concs,
+  partial_orders = NULL,
   time_step = 10^-3,
   max_time = 60,
   output_res = 1000
 )
 }
 \arguments{
-\item{rxn_path}{The name of the file containing the reaction equation set}
+\item{reactions}{A character vector containing strings with the reaction equations}
 
-\item{init_path}{The name of the file containing the concentrations of species}
+\item{init_concs}{The name of the file containing the concentrations of species}
 
 \item{partial_orders}{The name of the file containing the partial orders}
 
@@ -33,9 +33,11 @@ a data frame with the concentrations and reaction rates at each output time poin
 Title
 }
 \examples{
+data(rxns)
+data(concs)
 results <- simulate_reaction(
-  rxn_path = "rxns.txt",
-  init_path = "concs.csv",
+  reactions = rxns,
+  init_concs = concs,
   time_step = 10^-2,
   max_time = 360,
   output_res = 1000
