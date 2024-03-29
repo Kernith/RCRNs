@@ -33,11 +33,10 @@ a data frame with the concentrations and reaction rates at each output time poin
 Title
 }
 \examples{
-data(rxns)
-data(concs)
+data(CRNs)
 results <- simulate_reaction(
-  reactions = rxns,
-  init_concs = concs,
+  reactions = crns$rps$rxns,
+  init_concs = crns$rps$concs,
   time_step = 10^-2,
   max_time = 360,
   output_res = 1000

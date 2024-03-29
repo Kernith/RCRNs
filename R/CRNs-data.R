@@ -4,12 +4,12 @@
 #'
 #' @docType data
 #'
-#' @usage data(rxns)
+#' @usage data(CRNs)
 #'
-#' @format An object of class \code{"data.frame"}
+#' @format An object of class \code{"list"}
 #'
 #' @keywords datasets
 #'
 #' @examples
-#' data(rxns)
-"rxns"
+#' data(CRNs)
+"crns"

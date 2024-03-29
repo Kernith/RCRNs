@@ -18,6 +18,6 @@ A list of data frames with reaction parameters
 Parse a chemical reaction network
 }
 \examples{
-data(rxns)
-parse_reactions(rxns)
+data(CRNs)
+parse_reactions(crns$rps$rxns)
 }

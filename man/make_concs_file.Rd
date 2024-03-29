@@ -18,6 +18,6 @@ a file containing a template for species concentrations or a warning
 Make Species Concentrations from Chemical Network
 }
 \examples{
-data(rxns)
-make_concs_file(init_path = tempfile(), rxns)
+data(CRNs)
+make_concs_file(init_path = tempfile(), crns$rps$rxns)
 }

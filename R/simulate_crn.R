@@ -23,8 +23,8 @@
 #' @export
 #'
 #' @examples
-#' data(rxns)
-#' parse_reactions(rxns)
+#' data(CRNs)
+#' parse_reactions(crns$rps$rxns)
 parse_reactions <- function(reactions, partial_orders = NULL) {
   
   # Check for valid supplied arguments arguments
@@ -35,7 +35,7 @@ parse_reactions <- function(reactions, partial_orders = NULL) {
   
   # Filter comments; separate reaction names, reactants, products, and constants
   rxns <- reactions[!startsWith(reactions, "#")]
-  rxns <- as.data.frame(reactions)
+  rxns <- as.data.frame(rxns)
   names(rxns) <- "rxn"
   
   rxns$rxn <- gsub("k = ", "", rxns$rxn)
@@ -56,9 +56,9 @@ parse_reactions <- function(reactions, partial_orders = NULL) {
   # Get reactant stoichiometries
   # Separate reactants and rxn names, add leading 1's, and make stoichs negative
   reacts <- strsplit(rxns$react, "\\+")
-  reacts <- `names<-`(reacts, rxns$rxn)
+  names(reacts) <- rxns$rxn
   reacts <- stack(reacts)
-  reacts <- `names<-`(reacts, c("react", "rxn"))
+  names(reacts) <- c("react", "rxn")
   reacts$react <- trimws(reacts$react)
   reacts$react <- gsub("^(\\D)", "1 \\1", reacts$react)
   reacts$react <- gsub("(^[0-9]+)", "-\\1", reacts$react)
@@ -146,8 +146,8 @@ parse_reactions <- function(reactions, partial_orders = NULL) {
 #' @export
 #'
 #' @examples
-#' data(rxns)
-#' make_concs_file(init_path = tempfile(), rxns)
+#' data(CRNs)
+#' make_concs_file(init_path = tempfile(), crns$rps$rxns)
 make_concs_file <- function(init_path, reactions) {
   
   # makes a file for initial concentrations from the set of reaction equations
@@ -192,11 +192,10 @@ make_concs_file <- function(init_path, reactions) {
 #' @export
 #'
 #' @examples
-#' data(rxns)
-#' data(concs)
+#' data(CRNs)
 #' results <- simulate_reaction(
-#'   reactions = rxns,
-#'   init_concs = concs,
+#'   reactions = crns$rps$rxns,
+#'   init_concs = crns$rps$concs,
 #'   time_step = 10^-2,
 #'   max_time = 360,
 #'   output_res = 1000
