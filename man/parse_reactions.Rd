@@ -2,20 +2,56 @@
 % Please edit documentation in R/simulate_crn.R
 \name{parse_reactions}
 \alias{parse_reactions}
-\title{Parse a chemical reaction network}
+\title{Parse a Chemical Reaction Network}
 \usage{
-parse_reactions(reactions, partial_orders = NULL)
+parse_reactions(rxn_strings, partial_orders = NULL)
 }
 \arguments{
-\item{reactions}{A character vector containing strings with the reaction equations}
+\item{rxn_strings}{A character vector containing the reaction equations
+formatted as described below}
 
-\item{partial_orders}{The name of the file containing the partial orders}
+\item{partial_orders}{A data frame of partial orders for the reaction. By
+default the reactant stoichiometries are used for the partial orders.}
 }
 \value{
-A list of data frames with reaction parameters
+A list of four data frames with the parameters of the reactions. The
+data frames returned contain:
+\enumerate{
+\item rate constants
+\item reactant stoichiometries
+\item product stoichiometries
+\item partial orders of reaction
+}
 }
 \description{
-Parse a chemical reaction network
+Parse a set of reactions written as equations to return the reaction
+parameters (reactants and products, stoichiometry, and rate constant).
+}
+\details{
+Each reaction string must follow a particular format to be parsed correctly.
+The format is "\emph{name} = \emph{a} \emph{A} + \emph{b} \emph{B} + \emph{...} -> \emph{c} \emph{C} + \emph{d} \emph{D} +
+\emph{...}, k = \emph{const}".
+\itemize{
+\item \emph{name} is an identifier for the reaction and must be unique for each
+reaction in the network.
+\item \emph{A}, \emph{B}, \emph{C}, \emph{D}, \emph{...} are names of chemical species acting as
+reactants or products in the reaction. Each species must be separated by
+a plus, "+", and reactants and products must be separated by a reaction
+arrow, "->". At least one reactant and one product must be supplied for
+each reaction. A species can appear on both sides of the equation as both
+a reactant and product (e.g. a catalyst).
+\item \emph{a}, \emph{b}, \emph{c}, \emph{d}, \emph{...} are the reaction stoichiometries for
+species \emph{A}, \emph{B}, \emph{C}, \emph{D}, \emph{...}, respectively. Reaction stoichiometries
+must be separated from the chemical species name by white space.
+Different stoichiometries can be supplied for a species present as both a
+reactant and product.
+\item \emph{const} is the reaction rate constant. It can be supplied as any
+number that is interpretable by \code{as.numeric}, e.g. "50000" or "5e4", as
+well as scientific format, e.g. "5*10^4".
+}
+The units for rate constant are unspecified, but should be consistent with
+the units of the time step and concentrations used in subsequent simulations.
+\code{simulate_reaction}.
 }
 \examples{
 data(CRNs)

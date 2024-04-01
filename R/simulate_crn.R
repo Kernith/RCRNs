@@ -1,7 +1,9 @@
 ### Simulate the progression of species concentrations in a system of reactions
 ### these systems are commonly referred to as chemical reaction networks
 
-#------------------Known Issues-------------------------------------------------
+#------------------Known Issues and updates-------------------------------------
+
+# add a check for in a concentration went negative
 
 # when reaction and species have the same name, creates new names for everything
 # New names:
@@ -14,27 +16,65 @@
 
 #------------------Functions----------------------------------------------------
 
-#' Parse a chemical reaction network
+#' Parse a Chemical Reaction Network
 #'
-#' @param reactions A character vector containing strings with the reaction equations
-#' @param partial_orders The name of the file containing the partial orders
+#' Parse a set of reactions written as equations to return the reaction
+#' parameters (reactants and products, stoichiometry, and rate constant).
 #'
-#' @return A list of data frames with reaction parameters
+#' Each reaction string must follow a particular format to be parsed correctly.
+#' The format is "*name* = *a* *A* + *b* *B* + *...* -> *c* *C* + *d* *D* +
+#' *...*, k = *const*".
+#' \itemize{
+#'   \item *name* is an identifier for the reaction and must be unique for each
+#'     reaction in the network.
+#'   \item *A*, *B*, *C*, *D*, *...* are names of chemical species acting as
+#'     reactants or products in the reaction. Each species must be separated by
+#'     a plus, "+", and reactants and products must be separated by a reaction
+#'     arrow, "->". At least one reactant and one product must be supplied for
+#'     each reaction. A species can appear on both sides of the equation as both
+#'     a reactant and product (e.g. a catalyst).
+#'   \item *a*, *b*, *c*, *d*, *...* are the reaction stoichiometries for
+#'     species *A*, *B*, *C*, *D*, *...*, respectively. Reaction stoichiometries
+#'     must be separated from the chemical species name by white space.
+#'     Different stoichiometries can be supplied for a species present as both a
+#'     reactant and product.
+#'   \item *const* is the reaction rate constant. It can be supplied as any
+#'     number that is interpretable by `as.numeric`, e.g. "50000" or "5e4", as
+#'     well as scientific format, e.g. "5*10^4".
+#' }
+#' The units for rate constant are unspecified, but should be consistent with
+#' the units of the time step and concentrations used in subsequent simulations.
+#' `simulate_reaction`.
+#'
+#' @param rxn_strings A character vector containing the reaction equations
+#'   formatted as described below
+#' @param partial_orders A data frame of partial orders for the reaction. By
+#'   default the reactant stoichiometries are used for the partial orders.
+#'
+#' @return A list of four data frames with the parameters of the reactions. The
+#'   data frames returned contain:
+#' \enumerate{
+#'   \item rate constants
+#'   \item reactant stoichiometries
+#'   \item product stoichiometries
+#'   \item partial orders of reaction
+#' }
+#'
 #' @export
 #'
 #' @examples
 #' data(CRNs)
 #' parse_reactions(crns$rps$rxns)
-parse_reactions <- function(reactions, partial_orders = NULL) {
+parse_reactions <- function(rxn_strings, partial_orders = NULL) {
   
   # Check for valid supplied arguments arguments
-  arg_rxns_valid <- is.character(reactions)
+  arg_rxns_valid <- is.character(rxn_strings)
   stopifnot("`name` must be a character." = arg_rxns_valid)
   arg_orders_valid <- is.data.frame(partial_orders) | is.null(partial_orders)
   stopifnot("`partial_orders` must be NULL or a data frame" = arg_orders_valid)
   
   # Filter comments; separate reaction names, reactants, products, and constants
-  rxns <- reactions[!startsWith(reactions, "#")]
+  rxns <- rxn_strings[!startsWith(rxn_strings, "#")]
   rxns <- as.data.frame(rxns)
   names(rxns) <- "rxn"
   
@@ -126,7 +166,7 @@ parse_reactions <- function(reactions, partial_orders = NULL) {
     if (is.null(partial_orders)) {
       cbind(reacts[1], lapply(reacts[2:length(reacts)], function (x) x * -1))
     } else {
-      read.csv(partial_orders)
+      partial_orders
     }
   
   # return a named list of the reaction parameters (const, react, prod, partial)
@@ -137,72 +177,44 @@ parse_reactions <- function(reactions, partial_orders = NULL) {
   
 }
 
-#' Make Species Concentrations from Chemical Network
+#' Simulate a Chemical Reaction Network
 #'
-#' @param init_path The name of the file containing the concentrations of species
-#' @param reactions A character vector containing strings with the reaction equations
+#' Simulates the progression of a network of chemical reactions from a set of
+#' initial concentrations.
 #'
-#' @return a file containing a template for species concentrations or a warning
+#' Calculates reaction rates and changes in concentration for a chemical
+#' reaction network described by `rxn_params`. Calculations are done using
+#' classic mass-action rate equations, and are performed at a series of time
+#' points incremented by `time_step` from 0 to `max time` . \cr \cr The units of
+#' measure (e.g. molar or seconds) for `time_step` and `max_time` and
+#' `rxn_params` (rates, rate constants, and concentrations) are arbitrary, but
+#' are assumed to be consistent (e.g. if concentration is supplied in nanomolar
+#' and `time_step` in seconds, rate is assumed to be in nanomolar per second).
+#'
+#' @param rxn_params A character vector containing strings with the reaction
+#'   equations. This set of parameters can be generated from a human-friendly
+#'   strings via the reaction equations with the `parse_reactions` function.
+#' @param init_concs A data frame containing initial concentrations of chemical
+#'   species in the reaction network. Species not supplied with an initial
+#'   concentration are assumed to have an initial concentration of 0.
+#' @param time_step The amount of time that elapses in each simulation cycle
+#' @param max_time The full amount of time the simulation will run
+#' @param output_res The number of time points that will be returned from the
+#'   simulation
+#'
+#' @return Returns a data frame with the concentrations and the reaction rates
+#'   at each output time point
 #' @export
 #'
 #' @examples
 #' data(CRNs)
-#' make_concs_file(init_path = tempfile(), crns$rps$rxns)
-make_concs_file <- function(init_path, reactions) {
-  
-  # makes a file for initial concentrations from the set of reaction equations
-  # if a file already exists, warns that a file already exists
-  
-  # read in rxn equations
-  rxn_eqns <- parse_reactions(reactions)
-  
-  # if no initial concentrations file, makes an empty one from rxn eqns ...
-  if (!file.exists(init_path)) {
-    
-    init_concs <- data.frame(species = colnames(rxn_eqns$react_stoich)[-1],
-                             init_conc = 0)
-    print(init_concs)
-    write.csv(init_concs, file = init_path)
-    cat("-------------------------------",
-        "made new csv for concentrations",
-        "     update init concs now     ",
-        "-------------------------------",
-        sep = "\n")
-    
-    # ... or else warns that initial concentrations file already exists
-  } else {
-    
-    cat("-------------------------------------",
-        "csv for concentrations already exists",
-        "-------------------------------------",
-        sep = "\n")
-  }
-}
-
-#' Title
-#'
-#' @param reactions A character vector containing strings with the reaction equations
-#' @param init_concs The name of the file containing the concentrations of species
-#' @param partial_orders The name of the file containing the partial orders
-#' @param time_step the amount of time that elapses in each simulation cycle
-#' @param max_time the full amount of time the simulation will run
-#' @param output_res the number of time points that will be returned from the simulation
-#'
-#' @return a data frame with the concentrations and reaction rates at each output time point
-#' @export
-#'
-#' @examples
-#' data(CRNs)
-#' results <- simulate_reaction(
-#'   reactions = crns$rps$rxns,
-#'   init_concs = crns$rps$concs,
-#'   time_step = 10^-2,
-#'   max_time = 360,
-#'   output_res = 1000
-#'   )
-simulate_reaction <- function(reactions, init_concs, partial_orders = NULL,
-                              time_step = 10^-3, max_time = 60,
-                              output_res = 1000) {
+#' results <- simulate_crn(
+#'   rxn_params = parse_reactions(crns$rps$rxns),
+#'   init_concs = crns$rps$concs
+#' )
+#' 
+simulate_crn <- function(rxn_params, init_concs, time_step = 10^-3,
+                              max_time = 60, output_res = 1000) {
   
   # print number of points in simulation and output - warn if beyond thresholds
   cat("\ntotal steps = ", max_time / time_step, ". It should be <= 10^6",
@@ -212,22 +224,44 @@ simulate_reaction <- function(reactions, init_concs, partial_orders = NULL,
       sep = "")
   
   # read in reaction equations and initial concentrations
-  rxn_eqns   <- parse_reactions(reactions)
+  rxn_params   <- rxn_params
   init_concs$init_conc <- as.double(init_concs$init_conc)
-  init_concs <- init_concs[order(init_concs$species),]
+  
+  # add missing species to init_concs and order species
+  species <- names(rxn_params$react_stoich)[-1]
+  # warn of species in supplied concs missing from rxn_params
+  species_extra <- !(init_concs[[1]] %in% species)
+  if(any(species_extra)) {
+    stop(paste0("Chemical species {",
+               paste0(init_concs[[1]][species_extra], collapse = ", "),
+               "} supplied in inital concentrations but ommited from reactions\n",
+               "simulation terminated"))
+  }
+  
+  species_miss <- !(species %in% init_concs[[1]])
+  if (any(species_miss)) {
+    concs_miss <- data.frame("species" = species[species_miss],
+                             "init_conc" = 0)
+    init_concs <- rbind(init_concs, concs_miss)
+    # warn of species missing from supplied concs
+    cat(paste0("Chemical species {",
+               paste0(species[species_miss], collapse = ", "),
+               "} omitted from inital concentrations\n",
+               "these species are assumed to have conc = 0."))
+  }
+  init_concs <- init_concs[order(init_concs$species), ]
   
   # make matrices of reaction parameters, and vector of initial concentrations
-  
-  consts_mat <- as.matrix(rxn_eqns$consts[-1])
-  consts_mat <- `rownames<-`(consts_mat, rxn_eqns$consts[[1]])
-  reacts_mat <- as.matrix(rxn_eqns$react_stoich[-1])
-  reacts_mat <- `rownames<-`(reacts_mat, rxn_eqns$react_stoich[[1]])
-  prods_mat <- as.matrix(rxn_eqns$prod_stoich[-1])
-  prods_mat <- `rownames<-`(prods_mat, rxn_eqns$prod_stoich[[1]])
-  orders_mat <- as.matrix(rxn_eqns$partial_orders[-1])
-  orders_mat <- `rownames<-`(orders_mat, rxn_eqns$partial_orders[[1]])
-  concs_vec <- init_concs[,2]
-  names(concs_vec) <- init_concs[,1]
+  consts_mat <- as.matrix(rxn_params$consts[-1])
+  consts_mat <- `rownames<-`(consts_mat, rxn_params$consts[[1]])
+  reacts_mat <- as.matrix(rxn_params$react_stoich[-1])
+  reacts_mat <- `rownames<-`(reacts_mat, rxn_params$react_stoich[[1]])
+  prods_mat <- as.matrix(rxn_params$prod_stoich[-1])
+  prods_mat <- `rownames<-`(prods_mat, rxn_params$prod_stoich[[1]])
+  orders_mat <- as.matrix(rxn_params$partial_orders[-1])
+  orders_mat <- `rownames<-`(orders_mat, rxn_params$partial_orders[[1]])
+  concs_vec <- init_concs[, 2]
+  names(concs_vec) <- init_concs[, 1]
   
   # make transposed matrices to reduce transposition in the loop
   t_consts_mat <- t(consts_mat)
@@ -270,6 +304,13 @@ simulate_reaction <- function(reactions, init_concs, partial_orders = NULL,
     reacts_change <- reacts_mat * rxn_rates * time_step
     conc_change <- t(t(prods_change + reacts_change) %*% rxn_ones)
     concs_vec <- concs_vec + as.numeric(conc_change)
+    
+    # add a check for in a concentration went negative
+    # check check check
+    stopifnot(
+      "Concentrations went below 0. Consider reducing the timestep." = 
+      concs_vec >= 0
+    )
     
     # iterate for next loop
     i <- i + 1
