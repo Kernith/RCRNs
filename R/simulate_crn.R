@@ -69,15 +69,36 @@ parse_reactions <- function(rxn_strings, partial_orders = NULL) {
   
   # Check for valid supplied arguments arguments
   arg_rxns_valid <- is.character(rxn_strings)
-  stopifnot("`name` must be a character." = arg_rxns_valid)
+  stopifnot("`rxn_strings` must be a character vecor." = arg_rxns_valid)
   arg_orders_valid <- is.data.frame(partial_orders) | is.null(partial_orders)
   stopifnot("`partial_orders` must be NULL or a data frame" = arg_orders_valid)
   
-  # Filter comments; separate reaction names, reactants, products, and constants
+  
+  # Filter comments
   rxns <- rxn_strings[!startsWith(rxn_strings, "#")]
   rxns <- as.data.frame(rxns)
   names(rxns) <- "rxn"
   
+  # check format of rxn_strings and warn if not matching
+  rxn_pattern <-
+    paste0("^\\s*[[:graph:]]+\\s*=\\s*",  # reaction name
+           "(",                           # 0 or more .....
+           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
+           "[[:graph:]]+\\s*\\+\\s*",     # reactant followed by +
+           ")*",
+           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
+           "[[:graph:]]+\\s*->\\s*",      # reactant followed by ->
+           "(",                           # 0 or more .....
+           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
+           "[[:graph:]]+\\s*\\+\\s*",     # products followed by +
+           ")*", 
+           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
+           "[[:graph:]]+\\s*,\\s*",       # product followed by ,
+           "k\\s*=\\s*[[:graph:]]+\\s*$", # k = const
+           collapse = "")
+  stopifnot("rxn_strings (excluding comments) do not match pattern.  Check strings" = grepl(rxn_pattern, rxn_strings))
+  
+  # separate reaction names, reactants, products, and constants
   rxns$rxn <- gsub("k = ", "", rxns$rxn)
   rxns$rxn <- gsub("=", ",", rxns$rxn)
   rxns$rxn <- gsub("->", ",", rxns$rxn)
@@ -148,7 +169,7 @@ parse_reactions <- function(rxn_strings, partial_orders = NULL) {
   
   # Add columns to reacts with species missing from table, giving them 0 stoich
   react_missing <- setdiff(colnames(prods),  colnames(reacts))
-  react_missing <- reacts[react_missing]
+  react_missing <- prods[react_missing]
   react_missing[] <- 0
   reacts <- cbind(reacts, react_missing)
   reacts <- reacts[c(1, order(colnames(reacts))[order(colnames(reacts)) != 1])]
