@@ -74,31 +74,29 @@ parse_reactions <- function(rxn_strings, partial_orders = NULL) {
   stopifnot("`partial_orders` must be NULL or a data frame" = arg_orders_valid)
   
   
-  # Filter comments
+  # Filter comments and check format of rxn_strings and warn if not matching
   rxns <- rxn_strings[!startsWith(rxn_strings, "#")]
-  rxns <- as.data.frame(rxns)
-  names(rxns) <- "rxn"
-  
-  # check format of rxn_strings and warn if not matching
   rxn_pattern <-
-    paste0("^\\s*[[:graph:]]+\\s*=\\s*",  # reaction name
+    paste0("^\\s*(\\w|\\.|-)+\\s*=\\s*",  # reaction name
            "(",                           # 0 or more .....
-           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
-           "[[:graph:]]+\\s*\\+\\s*",     # reactant followed by +
+           "([[:digit:]]\\s+)?",            # 0 or 1 stoich number
+           "(\\w|\\.|-)+\\s*\\+\\s*",       # reactant followed by +
            ")*",
            "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
-           "[[:graph:]]+\\s*->\\s*",      # reactant followed by ->
+           "(\\w|\\.|-)+\\s*->\\s*",      # reactant followed by ->
            "(",                           # 0 or more .....
-           "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
-           "[[:graph:]]+\\s*\\+\\s*",     # products followed by +
+           "([[:digit:]]\\s+)?",            # 0 or 1 stoich number
+           "(\\w|\\.|-)+\\s*\\+\\s*",       # products followed by +
            ")*", 
            "([[:digit:]]\\s+)?",          # 0 or 1 stoich number
-           "[[:graph:]]+\\s*,\\s*",       # product followed by ,
+           "(\\w|\\.|-)+\\s*,\\s*",         # product followed by ,
            "k\\s*=\\s*[[:graph:]]+\\s*$", # k = const
            collapse = "")
-  stopifnot("rxn_strings (excluding comments) do not match pattern.  Check strings" = grepl(rxn_pattern, rxn_strings))
+  stopifnot("rxn_strings (excluding comments) do not match pattern.  Check strings" = grepl(rxn_pattern, rxns))
   
   # separate reaction names, reactants, products, and constants
+  rxns <- as.data.frame(rxns)
+  names(rxns) <- "rxn"
   rxns$rxn <- gsub("k = ", "", rxns$rxn)
   rxns$rxn <- gsub("=", ",", rxns$rxn)
   rxns$rxn <- gsub("->", ",", rxns$rxn)
@@ -267,8 +265,8 @@ simulate_crn <- function(rxn_params, init_concs, time_step = 10^-3,
     # warn of species missing from supplied concs
     cat(paste0("Chemical species {",
                paste0(species[species_miss], collapse = ", "),
-               "} omitted from inital concentrations\n",
-               "these species are assumed to have conc = 0."))
+               "} omitted from inital concentrations.",
+               "Assumed to have initial conc = 0."))
   }
   init_concs <- init_concs[order(init_concs$species), ]
   
